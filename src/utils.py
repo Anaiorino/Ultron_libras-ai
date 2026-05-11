@@ -3,9 +3,7 @@ import mediapipe as mp
 import time
 from collections import deque
 
-# ==========================================
-# CONFIGURAÇÃO MEDIAPIPE
-# ==========================================
+# CONFIG MEDIAPIPE
 
 mp_hands = mp.solutions.hands
 
@@ -17,15 +15,9 @@ hands = mp_hands.Hands(
 
 mp_draw = mp.solutions.drawing_utils
 
-# ==========================================
-# ABRIR CÂMERA
-# ==========================================
+# ABRIR Cam
 
 camera = cv2.VideoCapture(0)
-
-# ==========================================
-# VARIÁVEIS
-# ==========================================
 
 texto = ""
 
@@ -41,19 +33,15 @@ movement_history = deque(maxlen=15)
 left_hand_detected = False
 right_hand_detected = False
 
-# ==========================================
-# FUNÇÃO DETECTAR DEDOS
-# ==========================================
+# DETECTAR DEDOS
 
 finger_tips = [8, 12, 16, 20]
 
 def detect_fingers(landmarks):
 
     fingers = []
-
-    # ==========================
+    
     # POLEGAR
-    # ==========================
 
     thumb_tip = landmarks[4].x
     thumb_base = landmarks[3].x
@@ -63,9 +51,7 @@ def detect_fingers(landmarks):
     else:
         fingers.append(0)
 
-    # ==========================
     # OUTROS DEDOS
-    # ==========================
 
     for tip in finger_tips:
 
@@ -79,9 +65,9 @@ def detect_fingers(landmarks):
 
     return fingers
 
-# ==========================================
+
 # LOOP PRINCIPAL
-# ==========================================
+
 
 while True:
 
@@ -105,9 +91,7 @@ while True:
     left_hand_detected = False
     right_hand_detected = False
 
-    # ==========================================
     # DETECTOU MÃOS?
-    # ==========================================
 
     if results.multi_hand_landmarks and results.multi_handedness:
 
@@ -120,10 +104,8 @@ while True:
                 mp_hands.HAND_CONNECTIONS
             )
 
-            # ==========================================
             # IDENTIFICAR MÃO
-            # ==========================================
-
+            
             hand_label = results.multi_handedness[idx].classification[0].label
 
             if hand_label == "Left":
@@ -134,15 +116,13 @@ while True:
 
             landmarks = hand_landmarks.landmark
 
-            # ==========================================
+
             # DETECTAR DEDOS
-            # ==========================================
 
             fingers = detect_fingers(landmarks)
 
-            # ==========================================
             # CENTRO DA PALMA
-            # ==========================================
+    
 
             palm = landmarks[0]
 
@@ -152,14 +132,10 @@ while True:
             # Guardar histórico movimento
             movement_history.append((current_x, current_y))
 
-            # ==========================================
             # RECONHECIMENTO DE LIBRAS
-            # ==========================================
 
-            # ==========================
             # OI
             # Palma aberta + movimento direita
-            # ==========================
 
             if fingers == [1, 1, 1, 1, 1]:
 
@@ -173,10 +149,10 @@ while True:
                     if movement_x > 0.10:
                         gesto = "OI"
 
-            # ==========================
+
             # TCHAU
             # Palma aberta + movimento esquerda
-            # ==========================
+  
 
             if fingers == [1, 1, 1, 1, 1]:
 
@@ -190,10 +166,10 @@ while True:
                     if movement_x < -0.10:
                         gesto = "TCHAU"
 
-            # ==========================
+
             # SIM
             # Punho fechado movendo cima/baixo
-            # ==========================
+      
 
             if fingers == [0, 0, 0, 0, 0]:
 
@@ -207,10 +183,10 @@ while True:
                     if abs(movement_y) > 0.08:
                         gesto = "SIM"
 
-            # ==========================
+ 
             # NÃO
             # Indicador levantado mexendo lateralmente
-            # ==========================
+          
 
             if fingers == [0, 1, 0, 0, 0]:
 
@@ -224,18 +200,15 @@ while True:
                     if abs(movement_x) > 0.08:
                         gesto = "NAO"
 
-            # ==========================
             # AJUDA
             # Duas mãos abertas
-            # ==========================
+       
 
             if left_hand_detected and right_hand_detected:
 
                 gesto = "AJUDA"
 
-            # ==========================================
-            # ADICIONAR TEXTO
-            # ==========================================
+    
 
             tempo_atual = time.time()
 
@@ -250,9 +223,8 @@ while True:
                 ultimo_gesto = gesto
                 ultimo_tempo = tempo_atual
 
-    # ==========================================
     # MOSTRAR GESTO
-    # ==========================================
+  
 
     cv2.putText(
         frame,
@@ -264,9 +236,8 @@ while True:
         3
     )
 
-    # ==========================================
     # MOSTRAR TEXTO
-    # ==========================================
+ 
 
     cv2.putText(
         frame,
@@ -278,9 +249,8 @@ while True:
         2
     )
 
-    # ==========================================
     # MOSTRAR QUANTIDADE MÃOS
-    # ==========================================
+
 
     total_hands = 0
 
@@ -300,15 +270,14 @@ while True:
         2
     )
 
-    # ==========================================
-    # EXIBIR CÂMERA
-    # ==========================================
+  
+    # EXIBIR Cam
+
 
     cv2.imshow("Jarvis Libras", frame)
 
-    # ==========================================
     # TECLAS
-    # ==========================================
+ 
 
     key = cv2.waitKey(1)
 
@@ -320,9 +289,6 @@ while True:
     elif key == 8:
         texto = ""
 
-# ==========================================
-# FINALIZAR
-# ==========================================
 
 camera.release()
 cv2.destroyAllWindows()
