@@ -4,9 +4,9 @@ import numpy as np
 import os
 import time
 
-# ==========================================
-# CONFIGURAÇÃO
-# ==========================================
+
+# CONFIG
+
 
 SIGN_NAME = "voce"
 
@@ -16,9 +16,9 @@ TOTAL_SEQUENCES = 30
 
 DATA_PATH = os.path.join("dataset", SIGN_NAME)
 
-# ==========================================
-# CRIAR PASTAS
-# ==========================================
+
+
+
 
 for sequence in range(TOTAL_SEQUENCES):
 
@@ -27,9 +27,9 @@ for sequence in range(TOTAL_SEQUENCES):
         exist_ok=True
     )
 
-# ==========================================
+
 # MEDIAPIPE
-# ==========================================
+
 
 mp_hands = mp.solutions.hands
 
@@ -41,15 +41,15 @@ hands = mp_hands.Hands(
 
 mp_draw = mp.solutions.drawing_utils
 
-# ==========================================
-# CÂMERA
-# ==========================================
+
+# Cam
+
 
 camera = cv2.VideoCapture(0)
 
-# ==========================================
+
 # EXTRAIR LANDMARKS
-# ==========================================
+
 
 def extract_keypoints(results):
 
@@ -73,9 +73,9 @@ def extract_keypoints(results):
 
     return np.array(keypoints)
 
-# ==========================================
+
 # COLETAR DATASET
-# ==========================================
+
 
 for sequence in range(TOTAL_SEQUENCES):
 
@@ -150,9 +150,7 @@ for sequence in range(TOTAL_SEQUENCES):
         if cv2.waitKey(1) == 27:
             break
 
-# ==========================================
-# FINALIZAR
-# ==========================================
+
 
 camera.release()
 cv2.destroyAllWindows()
