@@ -6,10 +6,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.callbacks import TensorBoard
 
-# ==========================================
-# SINAIS
-# ==========================================
-
 actions = np.array([
     'oi',
     'sim',
@@ -19,9 +15,8 @@ actions = np.array([
     'tudo bem'
 ])
 
-# ==========================================
-# CONFIGURAÇÃO
-# ==========================================
+# CONFIG
+
 
 DATA_PATH = 'dataset'
 
@@ -29,9 +24,7 @@ SEQUENCE_LENGTH = 30
 
 label_map = {label:num for num, label in enumerate(actions)}
 
-# ==========================================
 # CARREGAR DADOS
-# ==========================================
 
 sequences = []
 labels = []
@@ -68,17 +61,15 @@ for action in actions:
 
             labels.append(label_map[action])
 
-# ==========================================
 # PREPARAR DADOS
-# ==========================================
 
 X = np.array(sequences)
 
 y = to_categorical(labels).astype(int)
 
-# ==========================================
-# TREINO / TESTE
-# ==========================================
+
+# TREINO 
+
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -86,9 +77,9 @@ X_train, X_test, y_train, y_test = train_test_split(
     test_size=0.05
 )
 
-# ==========================================
+
 # MODELO LSTM
-# ==========================================
+
 
 model = Sequential()
 
@@ -122,9 +113,9 @@ model.add(Dense(32, activation='relu'))
 
 model.add(Dense(actions.shape[0], activation='softmax'))
 
-# ==========================================
+
 # COMPILAR
-# ==========================================
+
 
 model.compile(
     optimizer='Adam',
@@ -132,17 +123,17 @@ model.compile(
     metrics=['categorical_accuracy']
 )
 
-# ==========================================
+
 # LOGS
-# ==========================================
+
 
 log_dir = os.path.join('Logs')
 
 tb_callback = TensorBoard(log_dir=log_dir)
 
-# ==========================================
+
 # TREINAR
-# ==========================================
+
 
 model.fit(
     X_train,
@@ -151,9 +142,9 @@ model.fit(
     callbacks=[tb_callback]
 )
 
-# ==========================================
+
 # SALVAR MODELO
-# ==========================================
+
 
 os.makedirs("models", exist_ok=True)
 
