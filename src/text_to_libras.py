@@ -4,16 +4,12 @@ import cv2
 import os
 import threading
 
-# ==========================================
-# CONFIGURAÇÃO VISUAL
-# ==========================================
+
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-# ==========================================
-# DICIONÁRIO TEXTO -> VÍDEO LIBRAS
-# ==========================================
+
 
 SIGN_VIDEOS = {
     "oi": "assets/oi.mp4",
@@ -86,9 +82,7 @@ def clear_text():
     input_text.delete("1.0", "end")
     status_label.configure(text="Aguardando texto...")
 
-# ==========================================
 # INTERFACE
-# ==========================================
 
 app = ctk.CTk()
 app.title("Jarvis Libras")
