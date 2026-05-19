@@ -180,4 +180,11 @@ API pública
 > ⚠️ This repository is licensed under a Non-Commercial License (CC BY-NC 4.0).
 > Commercial use, resale, SaaS distribution, rebranding, or monetization of this project is strictly prohibited without prior authorization from the repository owner.
 
+   
+Creative Commons Atribuição-NãoComercial-SemDerivados 4.0 Internacional
+Esta licença exige que os reutilizadores dêem crédito ao criador. Ele permite que os reutilizadores copiem e distribuam o material em qualquer meio ou formato, de forma não adaptada e apenas para fins não comerciais.
 
+POR É preciso dar crédito a você, o criador.
+Carolina do Norte Somente o uso não comercial do seu trabalho é permitido. Meios não comerciais não destinados principalmente ou direcionados a vantagens comerciais ou compensações monetárias.
+ND Não são permitidos derivados ou adaptações do seu trabalho.
+https://creativecommons.org/licenses/by-nc-nd/4.0/
