@@ -180,13 +180,4 @@ API pública
 > ⚠️ This repository is licensed under a Non-Commercial License (CC BY-NC 4.0).
 > Commercial use, resale, SaaS distribution, rebranding, or monetization of this project is strictly prohibited without prior authorization from the repository owner.
 
-No Settings > License ou criar manualmente o arquivo LICENSE
 
-Creative Commons Attribution-NonCommercial 4.0 International
-
-Copyright (c) 2026 Anaiorino
-
-This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License.
-
-To view a copy of this license, visit:
-https://creativecommons.org/licenses/by-nc/4.0/
