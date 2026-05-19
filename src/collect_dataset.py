@@ -8,11 +8,11 @@ import time
 # CONFIG
 
 
-SIGN_NAME = "voce"
+SIGN_NAME = "neutro"
 
 SEQUENCE_LENGTH = 30
 
-TOTAL_SEQUENCES = 30
+TOTAL_SEQUENCES = 50
 
 DATA_PATH = os.path.join("dataset", SIGN_NAME)
 
