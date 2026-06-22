@@ -1,51 +1,31 @@
-# =========================
 # Python
-# =========================
 venv/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
+.pytest_cache/
 
-# =========================
 # Dataset / IA
-# =========================
 dataset/
 dataset_videos/
 models/
 Logs/
 logs/
+*.npy
+*.h5
+*.keras
 
-# =========================
-# Banco / arquivos locais
-# =========================
+# Banco
 *.db
 *.sqlite3
 
-# =========================
 # Arquivos grandes
-# =========================
 *.zip
-*.h5
-*.keras
-*.npy
 
-# =========================
-# Ambiente / segredos
-# =========================
+# Ambiente
 .env
 
-# =========================
-# SO / editor
-# =========================
-.DS_Store
-Thumbs.db
+# Editor / sistema
 .vscode/
 .idea/
-
-# =========================
-# Testes / cache
-# =========================
-.pytest_cache/
-.coverage
-htmlcov/
+.DS_Store
+Thumbs.db
