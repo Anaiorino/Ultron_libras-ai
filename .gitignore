@@ -1,54 +1,51 @@
-
-
+# =========================
+# Python
+# =========================
 venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-backend/
-.env
-
-*.db
-database.db
-
-
-
-models/*.h5
-models/*.keras
-models/*.npy
-
-
-
+# =========================
+# Dataset / IA
+# =========================
 dataset/
 dataset_videos/
-
-
-
+models/
 Logs/
 logs/
 
+# =========================
+# Banco / arquivos locais
+# =========================
+*.db
+*.sqlite3
 
-.pytest_cache/
-.mypy_cache/
+# =========================
+# Arquivos grandes
+# =========================
+*.zip
+*.h5
+*.keras
+*.npy
 
+# =========================
+# Ambiente / segredos
+# =========================
+.env
 
-
+# =========================
+# SO / editor
+# =========================
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 
-
-
-dist/
-build/
-
-
-
-*.mp4
-*.avi
-*.mov
-
-
-
-.DS_Store
-Thumbs.db
+# =========================
+# Testes / cache
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
