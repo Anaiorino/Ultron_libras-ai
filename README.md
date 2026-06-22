@@ -446,7 +446,7 @@ Antes de começar, tenha instalado:
 ## 15.2. Clonar o repositório
 
 ```bash
-git clone https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
+git clone https://github.com/Anaiorino/Ultron_libras-ai.git
 cd jarvis-libras
 ```
 
