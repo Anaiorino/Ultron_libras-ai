@@ -23,3 +23,15 @@ class User(Base):
     password = Column(String, nullable=False)
     role = Column(String, default="user")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TranslationHistory(Base):
+    __tablename__ = "translation_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False)
+    input_text = Column(String, nullable=False)
+    output_text = Column(String, nullable=False)
+    translation_type = Column(String, nullable=False)
+    confidence = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

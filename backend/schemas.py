@@ -50,3 +50,23 @@ class LoginResponse(BaseModel):
     user: UserResponse
     access_token: str
     token_type: str = "bearer"
+
+
+class TranslationCreate(BaseModel):
+    user_id: int
+    input_text: str = Field(min_length=1, max_length=500)
+    output_text: str = Field(min_length=1, max_length=500)
+    translation_type: str = Field(min_length=2, max_length=50)
+    confidence: Optional[str] = None
+
+
+class TranslationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    input_text: str
+    output_text: str
+    translation_type: str
+    confidence: Optional[str]
+    created_at: datetime

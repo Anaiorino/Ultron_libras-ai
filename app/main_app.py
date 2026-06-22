@@ -13,10 +13,32 @@ from tkinter import messagebox
 from tensorflow.keras.models import load_model
 from voice import speak
 from datetime import datetime
-
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
+
+
+# Mesmo tamanho de sequência usado no treino (SEQUENCE_LENGTH em
+# train_model.py / video_to_dataset.py)
+SEQUENCE_LENGTH = 30
+
+
+def get_frame_indexes(total_frames, sequence_length):
+    """Reamostra um buffer de frames para `sequence_length` posições,
+    da mesma forma que video_to_dataset.py faz com np.linspace ao
+    converter os vídeos de treino."""
+
+    if total_frames <= 0:
+        return []
+
+    return np.linspace(
+        0,
+        total_frames - 1,
+        sequence_length,
+        dtype=int
+    )
 
 
 class JarvisLibrasApp:
@@ -44,7 +66,14 @@ class JarvisLibrasApp:
         self.mp_draw = mp.solutions.drawing_utils
 
         self.camera = None
-        self.sequence = deque(maxlen=30)
+
+        # Buffer com (timestamp, keypoints) cobrindo os últimos
+        # SEQUENCE_DURATION segundos de câmera. Na hora de prever, esse
+        # buffer é reamostrado para SEQUENCE_LENGTH frames com
+        # get_frame_indexes, igual ao que video_to_dataset.py faz com os
+        # vídeos de treino (que duram ~3 a 4 segundos).
+        self.frame_buffer = deque()
+        self.SEQUENCE_DURATION = 3.5
 
         self.last_prediction = ""
         self.last_spoken_word = ""
@@ -54,7 +83,7 @@ class JarvisLibrasApp:
         self.recognized_word = "..."
         self.confidence = 0.0
 
-        self.PREDICT_EVERY = 5
+        self.PREDICT_EVERY = 8
         self.CONFIDENCE_THRESHOLD = 0.75
         self.PREDICTION_DELAY = 2
 
@@ -347,6 +376,7 @@ class JarvisLibrasApp:
         self.nav_button("🏠  Início", self.show_home, active=True)
         self.nav_button("🤟  Reconhecer Libras", self.show_predict)
         self.nav_button("🎙️  Voz para Libras", self.show_voice_to_libras)
+        self.nav_button("🕘  Histórico", self.show_history)
 
         if self.current_user["role"] == "ADMIN":
             self.nav_button("📊  Métricas da API", self.show_metrics)
@@ -563,6 +593,47 @@ class JarvisLibrasApp:
 
         return card
 
+
+
+
+    def metric_card(self, parent, icon, title, value):
+        card = ctk.CTkFrame(
+            parent,
+            width=200,
+            height=170,
+            corner_radius=22,
+            fg_color="#11111a",
+            border_width=1,
+            border_color="#2d2d3d"
+        )
+
+        card.grid_propagate(False)
+        card.pack_propagate(False)
+
+        ctk.CTkLabel(
+            card,
+            text=icon,
+            font=("Arial", 42),
+            text_color="#ff7ab8"
+        ).pack(pady=(25, 8))
+
+        ctk.CTkLabel(
+            card,
+            text=title,
+            font=("Arial", 16, "bold"),
+            text_color="#cccccc"
+        ).pack()
+
+        ctk.CTkLabel(
+            card,
+            text=value,
+            font=("Arial", 22, "bold"),
+            text_color="#ffffff"
+        ).pack(pady=(8, 0))
+
+        return card
+
+
     def info_item(self, parent, icon, label, value):
         item = ctk.CTkFrame(parent, fg_color="transparent")
 
@@ -611,7 +682,13 @@ class JarvisLibrasApp:
         )
         self.status_label.pack(pady=10)
 
-        self.camera = cv2.VideoCapture(0)
+        self.camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.camera.set(cv2.CAP_PROP_FPS, 30)
+        self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
         self.update_camera()
 
     def extract_keypoints(self, results):
@@ -652,10 +729,26 @@ class JarvisLibrasApp:
                 )
 
         keypoints = self.extract_keypoints(results)
-        self.sequence.append(keypoints)
 
-        if len(self.sequence) == 30 and self.frame_counter % self.PREDICT_EVERY == 0:
-            input_data = np.array(self.sequence, dtype=np.float32)
+        current_time = time.time()
+        self.frame_buffer.append((current_time, keypoints))
+
+        # Mantém no buffer apenas os últimos SEQUENCE_DURATION segundos
+        while (
+            self.frame_buffer
+            and current_time - self.frame_buffer[0][0] > self.SEQUENCE_DURATION
+        ):
+            self.frame_buffer.popleft()
+
+        if len(self.frame_buffer) >= 15 and self.frame_counter % self.PREDICT_EVERY == 0:
+            buffer_keypoints = [kp for (_, kp) in self.frame_buffer]
+
+            # Reamostra o buffer para SEQUENCE_LENGTH frames, igual ao
+            # np.linspace usado em video_to_dataset.py
+            indexes = get_frame_indexes(len(buffer_keypoints), SEQUENCE_LENGTH)
+            input_sequence = [buffer_keypoints[i] for i in indexes]
+
+            input_data = np.array(input_sequence, dtype=np.float32)
 
             prediction = self.model.predict(
                 np.expand_dims(input_data, axis=0),
@@ -666,7 +759,9 @@ class JarvisLibrasApp:
             predicted_action = self.actions[predicted_index]
             self.confidence = float(prediction[predicted_index])
 
-            current_time = time.time()
+            # Debug: remova estes prints depois de validar o reconhecimento
+            print("Predição:", np.round(prediction, 3))
+            print("Classe prevista:", predicted_action, "| Confiança:", round(self.confidence, 3))
 
             if self.confidence > self.CONFIDENCE_THRESHOLD:
                 if predicted_action == "neutro":
@@ -680,10 +775,24 @@ class JarvisLibrasApp:
                         predicted_action != self.last_prediction
                         or current_time - self.last_added_time > self.PREDICTION_DELAY
                     ):
+                        
                         if predicted_action != self.last_spoken_word:
-                            speak(predicted_action.replace("_", " "))
-                            self.last_spoken_word = predicted_action
 
+                            translated_word = predicted_action.replace("_", " ")
+
+                            speak(translated_word)
+
+                            self.save_history(
+                                input_text=predicted_action,
+                                output_text=translated_word,
+                                translation_type="LIBRAS_TO_TEXT",
+                                confidence=round(self.confidence, 2)
+                            )
+
+                            self.last_spoken_word = predicted_action
+                        
+                        
+                        
                         self.last_prediction = predicted_action
                         self.last_added_time = current_time
 
@@ -691,7 +800,7 @@ class JarvisLibrasApp:
             text=f"Palavra: {self.recognized_word.upper()} | Confiança: {self.confidence:.2f}"
         )
 
-        frame = cv2.resize(frame, (780, 440))
+        frame = cv2.resize(frame, (700, 400))
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         img = Image.fromarray(frame)
@@ -792,6 +901,13 @@ class JarvisLibrasApp:
             messagebox.showwarning("Aviso", "Nenhum sinal encontrado para esse texto.")
             return
 
+        self.save_history(
+            input_text=text,
+            output_text=", ".join(words_to_play),
+            translation_type="VOICE_TO_LIBRAS",
+            confidence=None
+        )
+
         self.words_queue = words_to_play
         self.play_next_avatar_video()
 
@@ -832,6 +948,131 @@ class JarvisLibrasApp:
         self.app.after(30, self.update_avatar_video)
 
     # =========================
+    # HISTÓRICO
+    # =========================
+
+    def save_history(self, input_text, output_text, translation_type, confidence=None):
+        try:
+            requests.post(
+                "http://127.0.0.1:8000/history/",
+                headers={
+                    "Authorization": f"Bearer {self.access_token}"
+                },
+                json={
+                    "user_id": self.current_user["id"],
+                    "input_text": input_text,
+                    "output_text": output_text,
+                    "translation_type": translation_type,
+                    "confidence": str(confidence) if confidence is not None else None
+                }
+            )
+
+        except Exception:
+            pass
+
+    def show_history(self):
+        self.clear_content()
+
+        page = ctk.CTkFrame(self.content, fg_color="transparent")
+        page.pack(fill="both", expand=True, padx=45, pady=35)
+
+        ctk.CTkLabel(
+            page,
+            text="Histórico de Traduções",
+            font=("Arial", 34, "bold"),
+            text_color="#ff7ab8"
+        ).pack(anchor="w", pady=(0, 20))
+
+        try:
+            response = requests.get(
+                "http://127.0.0.1:8000/history/",
+                headers={
+                    "Authorization": f"Bearer {self.access_token}"
+                }
+            )
+
+            if response.status_code != 200:
+                ctk.CTkLabel(
+                    page,
+                    text="Não foi possível carregar o histórico.",
+                    font=("Arial", 16),
+                    text_color="#ffffff"
+                ).pack(anchor="w")
+                return
+
+            history = response.json()
+
+        except Exception:
+            ctk.CTkLabel(
+                page,
+                text="Backend não está rodando.",
+                font=("Arial", 16),
+                text_color="#ffffff"
+            ).pack(anchor="w")
+            return
+
+        if not history:
+            ctk.CTkLabel(
+                page,
+                text="Nenhuma tradução registrada ainda.",
+                font=("Arial", 16),
+                text_color="#cccccc"
+            ).pack(anchor="w")
+            return
+
+        scroll = ctk.CTkScrollableFrame(
+            page,
+            width=850,
+            height=520,
+            fg_color="transparent"
+        )
+        scroll.pack(fill="both", expand=True)
+
+        for item in reversed(history):
+            card = ctk.CTkFrame(
+                scroll,
+                corner_radius=18,
+                fg_color="#11111a",
+                border_width=1,
+                border_color="#2d2d3d"
+            )
+            card.pack(fill="x", pady=8, padx=5)
+
+            title = (
+                f"{item['translation_type']}  |  "
+                f"Confiança: {item['confidence'] or 'N/A'}"
+            )
+
+            if self.current_user["role"] == "ADMIN":
+                ctk.CTkLabel(
+                    card,
+                    text=f"Usuário: {item.get('user_name', 'N/A')} | {item.get('user_email', 'N/A')}",
+                    font=("Arial", 13, "bold"),
+                    text_color="#ffffff"
+            ).pack(anchor="w", padx=20, pady=(0, 6))
+
+            ctk.CTkLabel(
+                card,
+                text=title,
+                font=("Arial", 14, "bold"),
+                text_color="#ff7ab8"
+            ).pack(anchor="w", padx=20, pady=(12, 4))
+
+            ctk.CTkLabel(
+                card,
+                text=f"Entrada: {item['input_text']}",
+                font=("Arial", 14),
+                text_color="#ffffff"
+            ).pack(anchor="w", padx=20)
+
+            ctk.CTkLabel(
+                card,
+                text=f"Saída: {item['output_text']}",
+                font=("Arial", 14),
+                text_color="#cccccc"
+            ).pack(anchor="w", padx=20, pady=(0, 12))
+
+    # =========================
     # MÉTRICAS
     # =========================
 
@@ -843,49 +1084,155 @@ class JarvisLibrasApp:
 
         ctk.CTkLabel(
             page,
-            text="Métricas da API",
+            text="Dashboard Administrativo",
             font=("Arial", 34, "bold"),
             text_color="#ff7ab8"
         ).pack(anchor="w", pady=(0, 25))
 
         try:
             response = requests.get(
-                "http://127.0.0.1:8000/metrics",
-                headers={"Authorization": f"Bearer {self.access_token}"}
+                "http://127.0.0.1:8000/dashboard/",
+                headers={
+                    "Authorization": f"Bearer {self.access_token}"
+                }
             )
 
             if response.status_code != 200:
-                text = "Acesso negado. Apenas administradores podem visualizar métricas."
-            else:
-                data = response.json()
-                text = (
-                    f"Total de requisições: {data['total_requests']}\n\n"
-                    f"Tempo médio de resposta: {data['average_response_time_ms']} ms\n\n"
-                    f"Última rota: {data['last_path']}\n\n"
-                    f"Último método: {data['last_method']}\n\n"
-                    f"Último status: {data['last_status_code']}\n\n"
-                    f"Trace ID: {data['last_trace_id']}"
-                )
+                raise Exception()
+
+            data = response.json()
 
         except Exception:
-            text = "Não foi possível carregar as métricas. Verifique se o backend está rodando."
+            ctk.CTkLabel(
+                page,
+                text="Não foi possível carregar o dashboard.",
+                font=("Arial", 18),
+                text_color="#ffffff"
+            ).pack(anchor="w")
+            return
 
-        card = ctk.CTkFrame(
-            page,
+        cards = ctk.CTkFrame(page, fg_color="transparent")
+        cards.pack(fill="x", pady=(0, 22))
+
+        self.metric_card(
+            cards,
+            "👥",
+            "Usuários",
+            str(data.get("total_users", 0))
+        ).grid(row=0, column=0, padx=(0, 12))
+
+        self.metric_card(
+            cards,
+            "🤟",
+            "Traduções",
+            str(data.get("total_translations", 0))
+        ).grid(row=0, column=1, padx=12)
+
+        self.metric_card(
+            cards,
+            "📅",
+            "Hoje",
+            str(data.get("translations_today", 0))
+        ).grid(row=0, column=2, padx=12)
+
+        self.metric_card(
+            cards,
+            "🕒",
+            "Última atividade",
+            str(data.get("last_translation", "N/A"))
+        ).grid(row=0, column=3, padx=(12, 0))
+
+        charts = ctk.CTkFrame(page, fg_color="transparent")
+        charts.pack(fill="both", expand=True)
+
+        left_chart = ctk.CTkFrame(
+            charts,
             corner_radius=22,
             fg_color="#11111a",
             border_width=1,
             border_color="#2d2d3d"
         )
-        card.pack(fill="x", pady=20)
+        left_chart.pack(side="left", fill="both", expand=True, padx=(0, 12))
+
+        right_chart = ctk.CTkFrame(
+            charts,
+            corner_radius=22,
+            fg_color="#11111a",
+            border_width=1,
+            border_color="#2d2d3d"
+        )
+        right_chart.pack(side="right", fill="both", expand=True, padx=(12, 0))
 
         ctk.CTkLabel(
-            card,
-            text=text,
-            font=("Arial", 18),
-            justify="left",
-            text_color="#ffffff"
-        ).pack(padx=35, pady=35, anchor="w")
+            left_chart,
+            text="Traduções por Dia",
+            font=("Arial", 20, "bold"),
+            text_color="#ff7ab8"
+        ).pack(anchor="w", padx=22, pady=(20, 5))
+
+        ctk.CTkLabel(
+            right_chart,
+            text="Tipos de Tradução",
+            font=("Arial", 20, "bold"),
+            text_color="#ff7ab8"
+        ).pack(anchor="w", padx=22, pady=(20, 5))
+
+        self.draw_bar_chart(
+            left_chart,
+            data.get("translations_by_day", []),
+            x_key="date",
+            y_key="total"
+        )
+
+        self.draw_bar_chart(
+            right_chart,
+            data.get("translations_by_type", []),
+            x_key="type",
+            y_key="total"
+        )
+
+    def draw_bar_chart(self, parent, data, x_key, y_key):
+        chart_container = ctk.CTkFrame(parent, fg_color="transparent")
+        chart_container.pack(fill="both", expand=True, padx=20, pady=15)
+
+        if not data:
+            ctk.CTkLabel(
+                chart_container,
+                text="Sem dados para exibir.",
+                font=("Arial", 15),
+                text_color="#cccccc"
+            ).pack(expand=True)
+            return
+
+        labels = [str(item.get(x_key, "")) for item in data]
+        values = [item.get(y_key, 0) for item in data]
+
+        fig = Figure(
+            figsize=(4.2, 2.7),
+            dpi=100,
+            facecolor="#11111a"
+        )
+
+        ax = fig.add_subplot(111)
+        ax.set_facecolor("#11111a")
+
+        ax.bar(labels, values, color="#ff7ab8")
+
+        ax.tick_params(axis="x", colors="#ffffff", labelsize=8, rotation=25)
+        ax.tick_params(axis="y", colors="#ffffff", labelsize=8)
+
+        ax.spines["bottom"].set_color("#444455")
+        ax.spines["left"].set_color("#444455")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        ax.grid(axis="y", color="#2d2d3d", linestyle="--", linewidth=0.6)
+
+        fig.tight_layout()
+
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
 
     # =========================
     # FINALIZAR
@@ -896,7 +1243,7 @@ class JarvisLibrasApp:
             self.camera.release()
             self.camera = None
 
-        self.sequence.clear()
+        self.frame_buffer.clear()
 
     def stop_avatar(self):
         if self.avatar_cap is not None:

@@ -1,40 +1,53 @@
-from fastapi import Header, HTTPException
-from backend.routes.auth import get_user_by_token
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+from jose import jwt, JWTError
+
+from dotenv import load_dotenv
+
+import os
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+security = HTTPBearer()
 
 
-def get_current_user(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(
-            status_code=401,
-            detail="Token não informado"
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
         )
 
-    if not authorization.startswith("Bearer "):
+        return {
+            "id": payload.get("id"),
+            "name": payload.get("name"),
+            "email": payload.get("sub"),
+            "role": payload.get("role")
+        }
+
+    except JWTError:
         raise HTTPException(
             status_code=401,
             detail="Token inválido"
         )
 
-    token = authorization.replace("Bearer ", "")
 
-    user = get_user_by_token(token)
-
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Sessão inválida"
-        )
-
-    return user
-
-
-def require_admin(current_user=Header(None)):
-    user = get_current_user(current_user)
-
-    if user["role"] != "ADMIN":
+def require_admin(
+    current_user=Depends(get_current_user)
+):
+    if current_user["role"] != "ADMIN":
         raise HTTPException(
             status_code=403,
             detail="Acesso permitido apenas para administradores"
         )
 
-    return user
+    return current_user

@@ -1,11 +1,13 @@
 from fastapi import FastAPI, Depends
 
+from backend.routes.history import router as history_router
 from backend.database import Base, engine
 from backend.routes.signs import router as signs_router
 from backend.routes.auth import router as auth_router
 from backend.middlewares.logging_middleware import logging_middleware
 from backend.metrics import get_metrics
 from backend.security import get_current_user
+from backend.routes.dashboard import router as dashboard_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,7 +21,8 @@ app.middleware("http")(logging_middleware)
 
 app.include_router(signs_router)
 app.include_router(auth_router)
-
+app.include_router(history_router)
+app.include_router(dashboard_router)
 
 @app.get("/")
 def home():
