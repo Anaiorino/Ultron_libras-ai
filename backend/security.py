@@ -1,11 +1,13 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
 from jose import jwt, JWTError
+from sqlalchemy.orm import Session
+import os
 
 from dotenv import load_dotenv
 
-import os
+from backend.database import get_db
+from backend.models import User
 
 load_dotenv()
 
@@ -16,7 +18,8 @@ security = HTTPBearer()
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
 ):
     token = credentials.credentials
 
@@ -27,24 +30,35 @@ def get_current_user(
             algorithms=[ALGORITHM]
         )
 
-        return {
-            "id": payload.get("id"),
-            "name": payload.get("name"),
-            "email": payload.get("sub"),
-            "role": payload.get("role")
-        }
+        email = payload.get("sub")
+
+        if not email:
+            raise HTTPException(
+                status_code=401,
+                detail="Token inválido"
+            )
 
     except JWTError:
         raise HTTPException(
             status_code=401,
-            detail="Token inválido"
+            detail="Token inválido ou expirado"
         )
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Usuário não encontrado"
+        )
+
+    return user
 
 
 def require_admin(
-    current_user=Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    if current_user["role"] != "ADMIN":
+    if current_user.role != "ADMIN":
         raise HTTPException(
             status_code=403,
             detail="Acesso permitido apenas para administradores"

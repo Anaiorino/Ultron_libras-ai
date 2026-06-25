@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Sign
 from backend.schemas import SignCreate, SignUpdate, SignResponse
+from backend.security import get_current_user
 
 router = APIRouter(
     prefix="/signs",
@@ -12,7 +13,11 @@ router = APIRouter(
 
 
 @router.post("/", response_model=SignResponse)
-def create_sign(sign: SignCreate, db: Session = Depends(get_db)):
+def create_sign(
+    sign: SignCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     new_sign = Sign(
         name=sign.name,
         description=sign.description,
@@ -27,12 +32,19 @@ def create_sign(sign: SignCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[SignResponse])
-def list_signs(db: Session = Depends(get_db)):
+def list_signs(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     return db.query(Sign).all()
 
 
 @router.get("/{sign_id}", response_model=SignResponse)
-def get_sign(sign_id: int, db: Session = Depends(get_db)):
+def get_sign(
+    sign_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     sign = db.query(Sign).filter(Sign.id == sign_id).first()
 
     if not sign:
@@ -48,7 +60,8 @@ def get_sign(sign_id: int, db: Session = Depends(get_db)):
 def update_sign(
     sign_id: int,
     sign_data: SignUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     sign = db.query(Sign).filter(Sign.id == sign_id).first()
 
@@ -74,7 +87,11 @@ def update_sign(
 
 
 @router.delete("/{sign_id}")
-def delete_sign(sign_id: int, db: Session = Depends(get_db)):
+def delete_sign(
+    sign_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     sign = db.query(Sign).filter(Sign.id == sign_id).first()
 
     if not sign:

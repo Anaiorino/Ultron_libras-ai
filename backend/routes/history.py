@@ -16,9 +16,9 @@ router = APIRouter(
 def create_history(
     data: TranslationCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    if current_user["id"] != data.user_id and current_user["role"] != "ADMIN":
+    if current_user.id != data.user_id and current_user.role != "ADMIN":
         raise HTTPException(
             status_code=403,
             detail="Você não pode salvar histórico para outro usuário"
@@ -50,15 +50,15 @@ def create_history(
 @router.get("/")
 def list_history(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     query = (
         db.query(TranslationHistory, User)
         .join(User, TranslationHistory.user_id == User.id)
     )
 
-    if current_user["role"] != "ADMIN":
-        query = query.filter(TranslationHistory.user_id == current_user["id"])
+    if current_user.role != "ADMIN":
+        query = query.filter(TranslationHistory.user_id == current_user.id)
 
     results = query.all()
 
@@ -84,7 +84,7 @@ def list_history(
 def delete_history(
     history_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     history = db.query(TranslationHistory).filter(
         TranslationHistory.id == history_id
@@ -96,7 +96,7 @@ def delete_history(
             detail="Histórico não encontrado"
         )
 
-    if current_user["role"] != "ADMIN" and history.user_id != current_user["id"]:
+    if current_user.role != "ADMIN" and history.user_id != current_user.id:
         raise HTTPException(
             status_code=403,
             detail="Você não pode apagar este histórico"
